@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*\.class
+.venv/
+venv/
+env/
+.Python
+
+# Secrets / local config
+.env
+.env.local
+.streamlit/secrets.toml
+secrets.local.json
+secrets.local.*
+
+# Generated artifacts
+output/
+work/
+logs/
+*.log
+exports/
+tmp/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

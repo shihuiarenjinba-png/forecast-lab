@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from forecast_data import load_table as load_table_strict, prepare_series
+
 APP_DIR = Path(__file__).resolve().parent
 APPS_DIR = APP_DIR.parents[1]
 SHARED_DIR = APPS_DIR / ".shared" / "factor_data"
@@ -46,24 +48,7 @@ def list_sheets(path: Path) -> list[str]:
 
 def load_table(src, sheet: str | None) -> pd.DataFrame | None:
     try:
-        name = getattr(src, "name", str(src)).lower()
-        if name.endswith(".xlsx"):
-            df = pd.read_excel(src, sheet_name=sheet if sheet else 0, index_col=0)
-        else:
-            df = pd.read_csv(src, index_col=0)
-        idx = df.index.astype(str).str.strip()
-        if idx.str.match(r"^\d{6}$").all():
-            df.index = pd.to_datetime(idx, format="%Y%m")
-        elif idx.str.match(r"^\d{8}$").all():
-            df.index = pd.to_datetime(idx, format="%Y%m%d")
-        else:
-            try:
-                df.index = pd.to_datetime(idx)
-            except Exception:
-                pass
-        for c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-        return df
+        return load_table_strict(src, sheet)
     except Exception as e:
         st.error(f"読み込み失敗: {e}")
         return None
@@ -139,9 +124,17 @@ def input_panel(key_prefix: str) -> tuple[pd.Series | None, str, str]:
         key=f"{key_prefix}_kind",
     )
 
-    s = df[col].dropna()
-    if series_kind.startswith("価格"):
-        s = s.pct_change().dropna()
+    try:
+        s, input_warnings = prepare_series(
+            df,
+            col,
+            "price" if series_kind.startswith("価格") else "return",
+        )
+    except ValueError as e:
+        st.error(f"時系列入力エラー: {e}")
+        return None, label, ""
+    for warning in input_warnings:
+        st.warning(warning)
 
     # 頻度の自動推定
     freq = "?"
